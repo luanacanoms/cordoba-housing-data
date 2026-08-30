@@ -9,7 +9,6 @@ jobs:
   extraer-datos:
     runs-on: ubuntu-latest
     
-    # Adiciona a permissão necessária para o 'git push' funcionar
     permissions:
       contents: write
 
@@ -35,9 +34,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          
-          # Altera para rastrear todos os CSVs novos ou modificados na raiz do repositório
           git add *.csv
-          
           git diff --staged --quiet || git commit -m "Actualizacion automatica de datos - $(date +'%Y-%m-%d')"
           git push
