@@ -3,6 +3,7 @@ import base64
 import pandas as pd
 import time
 import os
+import glob
 from datetime import datetime
 
 API_KEY = os.environ.get("IDEALISTA_API_KEY")
