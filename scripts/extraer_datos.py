@@ -14,7 +14,9 @@ RADIO_METROS = "5000"
 MAX_PAGINAS = 55
 
 RUTA_GABARITO = "data/foo.csv"
-RUTA_SALIDA = f"data/viviendas_cordoba_idealista_{datetime.now().strftime('%Y-%m-%d')}.csv"
+FECHA_HOY = datetime.now().strftime('%Y-%m-%d')
+RUTA_SALIDA = f"data/viviendas_cordoba_idealista_{FECHA_HOY}.csv"
+RUTA_NUEVOS = f"data/anuncios_nuevos_{FECHA_HOY}.csv"
 
 
 def obtener_token():
@@ -149,6 +151,31 @@ def alinhar_com_gabarito(df_raspado, ruta_gabarito):
     return df_raspado.reindex(columns=df_gabarito.columns)
 
 
+def comparar_com_historico(df_hoy):
+    lista_archivos = glob.glob('data/viviendas_cordoba_idealista_*.csv')
+    lista_archivos = [f for f in lista_archivos if RUTA_SALIDA not in f]
+    lista_archivos.sort(key=os.path.getmtime)
+
+    if len(lista_archivos) == 0:
+        print("No se encontró historial previo. Saltando la comparación.")
+        return pd.DataFrame()
+
+    archivo_historico = lista_archivos[-1]
+    print(f"Comparando datos contra: {archivo_historico}")
+
+    df_ayer = pd.read_csv(archivo_historico)
+    nuevos_ids = set(df_hoy['id']) - set(df_ayer['id'])
+    anuncios_nuevos = df_hoy[df_hoy['id'].isin(nuevos_ids)]
+
+    if not anuncios_nuevos.empty:
+        anuncios_nuevos.to_csv(RUTA_NUEVOS, index=False, encoding='utf-8-sig')
+        print(f"¡Se exportaron {len(anuncios_nuevos)} anuncios nuevos a {RUTA_NUEVOS}!")
+    else:
+        print("El mercado está quieto: no hay anuncios nuevos hoy.")
+
+    return anuncios_nuevos
+
+
 def main():
     if not API_KEY or not API_SECRET:
         raise Exception("Faltan las credenciales de la API (IDEALISTA_API_KEY / IDEALISTA_API_SECRET)")
@@ -161,11 +188,15 @@ def main():
     print(f"Total de inmuebles extraídos: {len(df_raspado)}")
 
     print("Alineando columnas con el esquema de referencia...")
-    df_final = alinhar_com_gabarito(df_raspado, RUTA_GABARITO)
+    df_hoy = alinhar_com_gabarito(df_raspado, RUTA_GABARITO)
 
     os.makedirs("data", exist_ok=True)
-    df_final.to_csv(RUTA_SALIDA, index=False, encoding='utf-8-sig')
-    print(f"Archivo guardado: {RUTA_SALIDA}")
+
+    print("Comparando con el historial...")
+    comparar_com_historico(df_hoy)
+
+    df_hoy.to_csv(RUTA_SALIDA, index=False, encoding='utf-8-sig')
+    print(f"Base general actualizada y guardada en: {RUTA_SALIDA}")
 
 
 if __name__ == "__main__":
